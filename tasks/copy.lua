@@ -12,6 +12,7 @@ require('../')
 require('./util')
 require('optim')
 require('sys')
+require('gnuplot')
 
 torch.manualSeed(0)
 
@@ -141,6 +142,22 @@ for iter = 1, num_iters do
       print(seq)
       print("output:")
       print(outputs)
+      
+      gnuplot.pngfigure('logs/target.png')
+      gnuplot.figure(1)
+      gnuplot.imagesc(seq, 'color')
+
+      gnuplot.pngfigure('logs/output.png')
+      gnuplot.figure(2)
+      gnuplot.imagesc(outputs, 'color')
+
+      gnuplot.pngfigure('logs/error.png')
+      gnuplot.figure(3)
+      gnuplot.imagesc(torch.csub(outputs, seq), 'color')
+
+      gnuplot.plotflush(1)
+      gnuplot.plotflush(2)
+      gnuplot.plotflush(3)
     end
 
     -- clip gradients
