@@ -16,6 +16,13 @@ require('gnuplot')
 
 torch.manualSeed(0)
 
+local cmd = torch.CmdLine()
+cmd:text()
+cmd:text('Options:')
+cmd:option('--print_interval', 100, 'print progress every n time steps')
+
+local opt = cmd:parse(arg or {})
+
 -- NTM config
 local config = {
   input_dim = 10,
@@ -94,7 +101,6 @@ local params, grads = model:getParameters()
 
 local num_iters = 10000
 local start = sys.clock()
-local print_interval = 25
 local min_len = 1
 local max_len = 20
 
@@ -118,7 +124,7 @@ local rmsprop_state = {
 
 -- train
 for iter = 1, num_iters do
-  local print_flag = (iter % print_interval == 0)
+  local print_flag = (iter % opt.print_interval == 0)
   local feval = function(x)
     if print_flag then
       print(string.rep('-', 80))
@@ -142,9 +148,10 @@ for iter = 1, num_iters do
       print(seq)
       print("output:")
       print(outputs)
-      
+
       gnuplot.pngfigure('logs/target.png')
       gnuplot.figure(1)
+      gnuplot.raw('set cbrange [0:1]')
       gnuplot.imagesc(seq, 'color')
 
       gnuplot.pngfigure('logs/output.png')
@@ -153,6 +160,7 @@ for iter = 1, num_iters do
 
       gnuplot.pngfigure('logs/error.png')
       gnuplot.figure(3)
+      gnuplot.raw('set cbrange[-1:1]')
       gnuplot.imagesc(torch.csub(outputs, seq), 'color')
 
       gnuplot.plotflush(1)
