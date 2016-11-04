@@ -21,7 +21,7 @@ cmd:text('Options:')
 cmd:option('--seed', false, 'torch rng seed')
 cmd:option('--print_interval', 100, 'print progress every n time steps')
 cmd:option('--save_interval', 1000, 'print progress every n time steps')
-cmd:option('--savefile','ntm','filename to autosave the checkpont to. Will be inside checkpoint_dir/')
+cmd:option('--save_file','ntm','filename to autosave the checkpont to. Will be inside checkpoint_dir/')
 cmd:option('--init_from', '', 'initialize network parameters from checkpoint at this path')
 
 local checkpoint_dir = 'checkpoints'
@@ -38,8 +38,8 @@ local config = {
     cont_dim = 100
 }
 
--- local tasks = {'copy'}
-local tasks = {'recall'}
+local tasks = {'copy'}
+-- local tasks = {'recall'}
 local dataGenerators = {
     copy = CopyDataGenerator(config.input_dim - 2),
     recall = RecallDataGenerator(config.input_dim - 2, 1)
@@ -120,7 +120,7 @@ for iter = start_iter, num_iters do
     
     if save_flag then
         local avgLoss = summedLoss / opt.save_interval
-        local savefile = string.format('%s/%s_iter%.2f_%.4f.t7', checkpoint_dir, opt.savefile, iter, avgLoss)
+        local savefile = string.format('%s/%s_iter%.2f_%.4f.t7', checkpoint_dir, opt.save_file, iter, avgLoss)
         print('saving model to ' .. savefile)
         torch.save(savefile, {
             model = model,
