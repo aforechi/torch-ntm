@@ -15,11 +15,10 @@ require('../datagen/RecallDataGenerator')
 require('optim')
 require('sys')
 
-torch.manualSeed(0)
-
 local cmd = torch.CmdLine()
 cmd:text()
 cmd:text('Options:')
+cmd:option('--seed', false, 'torch rng seed')
 cmd:option('--print_interval', 100, 'print progress every n time steps')
 cmd:option('--save_interval', 1000, 'print progress every n time steps')
 cmd:option('--savefile','ntm','filename to autosave the checkpont to. Will be inside checkpoint_dir/')
@@ -27,6 +26,8 @@ cmd:option('--init_from', '', 'initialize network parameters from checkpoint at 
 
 local checkpoint_dir = 'checkpoints'
 local opt = cmd:parse(arg or {})
+
+if opt.seed then torch.manualSeed(opt.seed) end
 
 -- NTM config
 local config = {
@@ -41,24 +42,28 @@ local config = {
 local tasks = {'recall'}
 local dataGenerators = {
     copy = CopyDataGenerator(config.input_dim - 2),
-    recall = RecallDataGenerator(config.input_dim - 2, 3)
+    recall = RecallDataGenerator(config.input_dim - 2, 1)
 }
 
-local function forward(model, ioExample)
+local function forward(model, ioExample, print_flag)
+    if print_flag then print('write head max') end
     for i=1,ioExample.initialInput:size(1) do
         model:forward(ioExample.initialInput[i])
+        if print_flag then print_write_max(model) end
     end
 
     -- get output
     local output = torch.Tensor(ioExample.target:size())
     local criteria = {}
     local loss = 0
+    if print_flag then print('read head max') end
     for i=1, ioExample.queryInput:size(1) do
         criteria[i] = nn.BCECriterion()
         criteria[i].sizeAverage = false
         output[i] = model:forward(ioExample.queryInput[i])
         output[i]:cmul(ioExample.targetMask[i])
         loss = loss + criteria[i]:forward(output[i], ioExample.target[i])
+        if print_flag then print_read_max(model) end
     end
     return output, criteria, loss
 end
@@ -139,7 +144,7 @@ for iter = start_iter, num_iters do
         local len = math.random(min_len, max_len)
         local taskName = tasks[math.random(#tasks)]
         local ioExample = dataGenerators[taskName]:getRandomDataPoint(len, 1)
-        local output, criteria, loss = forward(model, ioExample)
+        local output, criteria, loss = forward(model, ioExample, print_flag)
         local effectiveLen = ioExample.targetMask[{{}, 1}]:sum() -- how many rows are non-masked?
         local natsPerStep = loss / effectiveLen
         backward(model, ioExample, output, criteria)
