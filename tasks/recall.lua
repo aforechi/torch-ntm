@@ -162,7 +162,7 @@ local model = ntm.NTM(config)
 local params, grads = model:getParameters()
 local num_iters = 50000
 local min_len = 2
-local max_len = 6
+local max_len = 2
 local item_len = 3
 print(string.rep('=', 80))
 print("NTM associative recall task")

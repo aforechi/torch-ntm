@@ -52,6 +52,7 @@ local function _save_plots_copy(ioExample, output)
 
   gnuplot.pngfigure('logs/output.png')
   gnuplot.figure(2)
+  gnuplot.raw('set cbrange [0:1]')
   gnuplot.imagesc(output, 'color')
 
   gnuplot.pngfigure('logs/error.png')
@@ -64,9 +65,14 @@ local function _save_plots_copy(ioExample, output)
   gnuplot.plotflush(3)
 end
 
+local function _save_plots_recall(ioExample, output)
+    _save_plots_copy(ioExample, output)
+end
+
 function save_plots(taskName, ioExample, output)
   local savePltCmds = {
-    copy = _save_plots_copy
+    copy = _save_plots_copy,
+    recall = _save_plots_recall
   }
   savePltCmds[taskName](ioExample, output)
 end

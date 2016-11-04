@@ -11,6 +11,7 @@
 require('../')
 require('./util')
 require('../datagen/CopyDataGenerator')
+require('../datagen/RecallDataGenerator')
 require('optim')
 require('sys')
 
@@ -36,9 +37,11 @@ local config = {
     cont_dim = 100
 }
 
-local tasks = {'copy'}
+-- local tasks = {'copy'}
+local tasks = {'recall'}
 local dataGenerators = {
     copy = CopyDataGenerator(config.input_dim - 2),
+    recall = RecallDataGenerator(config.input_dim - 2, 3)
 }
 
 local function forward(model, ioExample)
@@ -54,9 +57,10 @@ local function forward(model, ioExample)
         criteria[i] = nn.BCECriterion()
         criteria[i].sizeAverage = false
         output[i] = model:forward(ioExample.queryInput[i])
-        loss = loss + criteria[i]:forward(output[i], ioExample.queryInput[i])
+        output[i]:cmul(ioExample.targetMask[i])
+        loss = loss + criteria[i]:forward(output[i], ioExample.target[i])
     end
-    return output:cmul(ioExample.targetMask), criteria, loss
+    return output, criteria, loss
 end
 
 local function backward(model, ioExample, output, criteria)
@@ -86,8 +90,8 @@ local params, grads = model:getParameters()
 
 local num_iters = 10000
 local start = sys.clock()
-local min_len = 1
-local max_len = 20
+local min_len = 2
+local max_len = 2
 
 print(string.rep('=', 80))
 print("NTM copy task")
@@ -134,26 +138,21 @@ for iter = start_iter, num_iters do
 
         local len = math.random(min_len, max_len)
         local taskName = tasks[math.random(#tasks)]
-        local ioExample = dataGenerators[taskName]:getRandomDataPoint(len)
+        local ioExample = dataGenerators[taskName]:getRandomDataPoint(len, 1)
         local output, criteria, loss = forward(model, ioExample)
-
+        local effectiveLen = ioExample.targetMask[{{}, 1}]:sum() -- how many rows are non-masked?
+        local natsPerStep = loss / effectiveLen
         backward(model, ioExample, output, criteria)
-        if print_flag then
-            print("target:")
-            print(ioExample.target)
-            print("output:")
-            print(output)
-            save_plots(taskName, ioExample, output)
-        end
-
+ 
         -- clip gradients
         grads:clamp(-10, 10)
         if print_flag then
             print('max grad = ' .. grads:max())
             print('min grad = ' .. grads:min())
-            print('nats per time step = ' .. loss / len)
+            print('nats per time step = ' .. natsPerStep)
+            save_plots(taskName, ioExample, output)
         end
-        return loss / len, grads
+        return natsPerStep, grads
     end
 
     local _params, loss = ntm.rmsprop(feval, params, rmsprop_state)
