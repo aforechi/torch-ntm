@@ -12,6 +12,15 @@ function argmax(x)
 	return index, max
 end
 
+function getOrderedKeys(t)
+    local ordered = {}
+    for k in pairs(t) do
+        ordered[#ordered+1] = k
+    end
+    table.sort(ordered)
+    return ordered
+end
+
 function print_read_max(model)
 	local read_weights = model:get_read_weights()
 	local num_heads = model.read_heads
@@ -44,13 +53,13 @@ function print_write_max(model)
 	end
 end
 
-local function _save_plots_copy(ioExample, output)
-  gnuplot.pngfigure('logs/target.png')
+local function _save_plots_copy(ioExample, output, fileNamePrefix)
+  gnuplot.pngfigure(string.format('logs/%s_target.png', fileNamePrefix))
   gnuplot.figure(1)
   gnuplot.raw('set cbrange [0:1]')
   gnuplot.imagesc(ioExample.target, 'color')
 
-  gnuplot.pngfigure('logs/output.png')
+  gnuplot.pngfigure(string.format('logs/%s_output.png', fileNamePrefix))
   gnuplot.figure(2)
   gnuplot.raw('set cbrange [0:1]')
   gnuplot.imagesc(output, 'color')
@@ -65,14 +74,31 @@ local function _save_plots_copy(ioExample, output)
   gnuplot.plotflush(3)
 end
 
-local function _save_plots_recall(ioExample, output)
-    _save_plots_copy(ioExample, output)
+local function _save_plots_recall(ioExample, output, fileNamePrefix)
+    _save_plots_copy(ioExample, output, fileNamePrefix)
 end
 
-function save_plots(taskName, ioExample, output)
+function save_plots(taskName, ioExample, output, lossHistory, fileNamePrefix)
+  fileNamePrefix = fileNamePrefix or ''
   local savePltCmds = {
     copy = _save_plots_copy,
     recall = _save_plots_recall
   }
-  savePltCmds[taskName](ioExample, output)
+  savePltCmds[taskName](ioExample, output, fileNamePrefix)
+
+  _plot_loss(lossHistory)
+end
+
+function _plot_loss(lossHistory)
+  local xs, ys = {}, {}
+  local orderedKeys = getOrderedKeys(lossHistory)
+  print (orderedKeys)
+  for i=1, #orderedKeys do
+    xs[i] = orderedKeys[i]
+    ys[i] = lossHistory[orderedKeys[i]]
+  end
+  gnuplot.pngfigure(string.format('logs/loss.png', fileNamePrefix))
+  gnuplot.figure(4)
+  gnuplot.plot(torch.Tensor(xs), torch.Tensor(ys))
+  gnuplot.plotflush(4)
 end
